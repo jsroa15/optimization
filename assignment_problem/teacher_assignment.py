@@ -1,5 +1,4 @@
 #%%
-from posixpath import sep
 import pyomo.environ as pyo
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
@@ -9,6 +8,7 @@ import pandas as pd
 availability = pd.read_excel('input.xlsx', sheet_name='availability')
 general = pd.read_excel('input.xlsx', sheet_name='general')
 
+days_list = ['Friday', 'Monday', 'Thursday', 'Tuesday', 'Wednesday']
 ##### Extracting sets ######
 # Time spots
 availability['From'] = availability['From'].astype(str).str.split(':').apply(lambda x: x[0])
@@ -21,6 +21,11 @@ teachers = list(set(availability['Teacher']))
 # Students
 students = list(set(general[general['Type']=='Student']['Name']))
 
+# Levels
+levels = set(general['Level'])
+
+# Days
+days = set(days_list)
 
 ##### Get Parameters #####
 # Distances
@@ -35,7 +40,7 @@ dis_street = abs(distances['Street_x']-distances['Street_y'])
 dis_avenue = abs(distances['Avenue_x']-distances['Avenue_y'])
 distances['Distance'] = dis_street+dis_avenue
 distances.rename(columns={'Name_x':'Student','Name_y':'Teacher'},inplace=True)
-D = distances.set_index(['Teacher','Student'])['Distances']
+D = distances.set_index(['Teacher','Student'])['Distance']
 
 # Student Demand
 student_demand = general[general['Type']=='Student']
@@ -54,44 +59,48 @@ SL = student_level.set_index('Name')['Level']
 teacher_level = general[general['Type']=='Teacher']
 TL = teacher_level.set_index('Name')['Level']
 #%%
-# Teacher Availability
+# Teacher's Availability
+availability['Value'] = 1
+sub = availability[['Teacher','To','Day','Value']]
+sub.rename(columns ={'To':'From'},inplace=True)
+
+avail = pd.concat([availability,sub]).set_index(['Teacher','Day','From'])['Value']
+avail = avail.replace(1,0)
 
 
+# #%%
+# # Create global variable to count te number of generator
+# N = len(data_gen)
 
+# # Create model
+# model = pyo.ConcreteModel()
 
-#%%
-# Create global variable to count te number of generator
-N = len(data_gen)
+# # Create model variables
+# model.x = pyo.Var(range(N),bounds=(0,None))
+# x = model.x
 
-# Create model
-model = pyo.ConcreteModel()
+# # Create model constraints
+# # Power balance constraing (satisfy demand)
+# x_sum = sum([x[i] for i in data_gen.id])
+# model.balance = pyo.Constraint(expr=x_sum == sum(data_load.load_demand))
 
-# Create model variables
-model.x = pyo.Var(range(N),bounds=(0,None))
-x = model.x
+# # Special condition
+# model.cond = pyo.Constraint(expr=x[0]+x[3]>=data_load.load_demand[0])
 
-# Create model constraints
-# Power balance constraing (satisfy demand)
-x_sum = sum([x[i] for i in data_gen.id])
-model.balance = pyo.Constraint(expr=x_sum == sum(data_load.load_demand))
+# # Upper bounds constraints
+# model.limits = pyo.ConstraintList()
+# for i in data_gen.id:
+#     model.limits.add(expr=x[i]<=data_gen.power_generation[i])
 
-# Special condition
-model.cond = pyo.Constraint(expr=x[0]+x[3]>=data_load.load_demand[0])
+# # Define Objective function
+# model.obj = pyo.Objective(expr=sum([x[i]*data_gen.cost[i] for i in data_gen.id]))
 
-# Upper bounds constraints
-model.limits = pyo.ConstraintList()
-for i in data_gen.id:
-    model.limits.add(expr=x[i]<=data_gen.power_generation[i])
+# # Define optimizer
+# opt = SolverFactory('cbc')
+# results = opt.solve(model)
 
-# Define Objective function
-model.obj = pyo.Objective(expr=sum([x[i]*data_gen.cost[i] for i in data_gen.id]))
+# # Attach solution to input table
+# data_gen['power_generated'] = [pyo.value(x[i]) for i in data_gen.id]
+# # %%
 
-# Define optimizer
-opt = SolverFactory('cbc')
-results = opt.solve(model)
-
-# Attach solution to input table
-data_gen['power_generated'] = [pyo.value(x[i]) for i in data_gen.id]
-# %%
-
-print(results)
+# print(results)
