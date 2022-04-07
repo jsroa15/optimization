@@ -9,7 +9,6 @@ import pandas as pd
 availability = pd.read_excel('input.xlsx', sheet_name='availability')
 general = pd.read_excel('input.xlsx', sheet_name='general')
 
-
 ##### Extracting sets ######
 # Time spots
 availability['From'] = availability['From'].astype(str).str.split(':').apply(lambda x: x[0])
@@ -21,13 +20,42 @@ teachers = list(set(availability['Teacher']))
 
 # Students
 students = list(set(general[general['Type']=='Student']['Name']))
-#%%
+
+
+##### Get Parameters #####
+# Distances
 # Calculate Distances between teacher and student
 std_dis = general[general['Type']=='Student'][['Name','Street', 'Avenue']]
 std_dis['one'] =1
 teacher_dis = general[general['Type']=='Teacher'][['Name','Street', 'Avenue']]
 teacher_dis['one'] =1
 distances = std_dis.merge(teacher_dis,on='one',how='outer')
+
+dis_street = abs(distances['Street_x']-distances['Street_y'])
+dis_avenue = abs(distances['Avenue_x']-distances['Avenue_y'])
+distances['Distance'] = dis_street+dis_avenue
+distances.rename(columns={'Name_x':'Student','Name_y':'Teacher'},inplace=True)
+D = distances.set_index(['Teacher','Student'])['Distances']
+
+# Student Demand
+student_demand = general[general['Type']=='Student']
+C = student_demand.set_index('Name')['Classes']
+
+# Teacher Supply
+teacher_supply = general[general['Type']=='Teacher']
+O = teacher_supply.set_index('Name')['Classes']
+
+#%%
+# Student Level
+student_level = general[general['Type']=='Student']
+SL = student_level.set_index('Name')['Level']
+
+# Teacher Supply
+teacher_level = general[general['Type']=='Teacher']
+TL = teacher_level.set_index('Name')['Level']
+#%%
+# Teacher Availability
+
 
 
 
