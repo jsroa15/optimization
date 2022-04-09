@@ -1,38 +1,44 @@
-#%%
+# %%
 import pyomo.environ as pyo
 from pyomo.environ import *
 from pyomo.opt import SolverFactory
 import pandas as pd
 from data_management import *
 
+# Read Data
+general = pd.read_excel('input.xlsx', sheet_name='general')
+availability = pd.read_excel('input.xlsx', sheet_name='availability')
+
+# Get data for LP model
+# Sets
+hours, teachers, students, levels, days = get_sets(availability, general)
+
+# Parameters
+D, C, O, SL, TL = get_parameters(general)
 
 
 # #%%
-# # Create global variable to count te number of generator
-# N = len(data_gen)
 
-# # Create model
-# model = pyo.ConcreteModel()
+# Create model
+model = pyo.ConcreteModel()
 
-# # Create model variables
-# model.x = pyo.Var(range(N),bounds=(0,None))
-# x = model.x
+# Create model variables
+model.x = pyo.Var(teachers, students, days, hours,
+                  within=pyo.Binary)
 
-# # Create model constraints
-# # Power balance constraing (satisfy demand)
-# x_sum = sum([x[i] for i in data_gen.id])
-# model.balance = pyo.Constraint(expr=x_sum == sum(data_load.load_demand))
+model.y = pyo.Var(days, hours, within=pyo.Binary)
 
-# # Special condition
-# model.cond = pyo.Constraint(expr=x[0]+x[3]>=data_load.load_demand[0])
+# Create model constraints
+# Satisfy students demand
+def _students_demand(m,j):
+    return sum([m.x[i,j,d,h] for i in teachers for d in days for h in hours])>= C[j]
 
-# # Upper bounds constraints
-# model.limits = pyo.ConstraintList()
-# for i in data_gen.id:
-#     model.limits.add(expr=x[i]<=data_gen.power_generation[i])
+model.students_demand = pyo.Constraint(students, rule=_students_demand)
+
 
 # # Define Objective function
-# model.obj = pyo.Objective(expr=sum([x[i]*data_gen.cost[i] for i in data_gen.id]))
+# model.obj = pyo.Objective(
+#     expr=sum([x[i]*data_gen.cost[i] for i in data_gen.id]))
 
 # # Define optimizer
 # opt = SolverFactory('cbc')

@@ -35,7 +35,6 @@ def get_availability(availability, days_list, hours_list, teachers_list):
 
     aux = df_teachers.merge(df_days, on='Value', how='outer')
     aux = aux.merge(df_hours, on='Value', how='outer')
-    print(aux)
 
     availability['Value'] = 1
     sub = availability[['Teacher', 'To', 'Day', 'Value']]
