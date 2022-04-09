@@ -4,28 +4,7 @@ from pyomo.environ import *
 from pyomo.opt import SolverFactory
 import pandas as pd
 
-# Read Input file
-availability = pd.read_excel('input.xlsx', sheet_name='availability')
-general = pd.read_excel('input.xlsx', sheet_name='general')
 
-days_list = ['Friday', 'Monday', 'Thursday', 'Tuesday', 'Wednesday']
-##### Extracting sets ######
-# Time spots
-availability['From'] = availability['From'].astype(str).str.split(':').apply(lambda x: x[0])
-availability['To'] = availability['To'].astype(str).str.split(':').apply(lambda x: x[0])
-time_spots = list(set(availability['From']).union(set(availability['To'])))
-
-# Teachers
-teachers = list(set(availability['Teacher']))
-
-# Students
-students = list(set(general[general['Type']=='Student']['Name']))
-
-# Levels
-levels = set(general['Level'])
-
-# Days
-days = set(days_list)
 
 ##### Get Parameters #####
 # Distances
@@ -59,13 +38,6 @@ SL = student_level.set_index('Name')['Level']
 teacher_level = general[general['Type']=='Teacher']
 TL = teacher_level.set_index('Name')['Level']
 #%%
-# Teacher's Availability
-availability['Value'] = 1
-sub = availability[['Teacher','To','Day','Value']]
-sub.rename(columns ={'To':'From'},inplace=True)
-
-avail = pd.concat([availability,sub]).set_index(['Teacher','Day','From'])['Value']
-avail = avail.replace(1,0)
 
 
 # #%%
