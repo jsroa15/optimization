@@ -17,7 +17,7 @@ hours, teachers, students, levels, days = get_sets(availability, general)
 # Parameters
 D, C, O, SL, TL = get_parameters(general)
 availability_teachers = get_availability(availability, days, hours, teachers)
-availability_teachers.replace(0, -1, inplace=True)
+# availability_teachers.replace(0, -1, inplace=True)
 
 
 # Create model
@@ -48,11 +48,11 @@ def _teachers_supply(m, i):
 
 model.teachers_supply = pyo.Constraint(teachers, rule=_teachers_supply)
 
-# Levels student and teacher
+# # Levels student and teacher
 
 
 def _levels(m, i, j, d, h):
-    return m.x[i, j, d, h]*TL[i] <= SL[j]
+    return (m.x[i, j, d, h]*TL[i]) >= m.x[i, j, d, h]*SL[j]
 
 
 model._levels = pyo.Constraint(teachers, students, days, hours, rule=_levels)
@@ -61,14 +61,15 @@ model._levels = pyo.Constraint(teachers, students, days, hours, rule=_levels)
 
 
 def _teachers_availability(m, i, j, d, h):
-
+    if availability_teachers[i, d, h] == 0:
+        return Constraint.Skip
     return (m.x[i, j, d, h]*availability_teachers[i, d, h]) <= 1
 
 
 model.teachers_availability = pyo.Constraint(
     teachers, students, days, hours, rule=_teachers_availability)
 
-# Teacher must teach at least one class in the week
+# # Teacher must teach at least one class in the week
 
 
 def _one_class_week(m, i):
@@ -77,7 +78,7 @@ def _one_class_week(m, i):
 
 model.one_class_week = pyo.Constraint(teachers, rule=_one_class_week)
 
-# A student cannot receive more than one class in a day
+# # A student cannot receive more than one class in a day
 
 
 def _one_class_day(m, j, d):
@@ -110,28 +111,32 @@ model.one_meeting = pyo.Constraint(rule=_one_meeting)
 def _one_hour_meeting(m, d, h):
     if h == 20:
         return Constraint.Skip
-    return m.y[d, h]+m.y[d, h+1] == 1
+    return m.y[d, h]+m.y[d, h+1] <= 1
 
 
 model.one_hour_meeting = pyo.Constraint(days, hours, rule=_one_hour_meeting)
 
+
 # Teacher's meeting only happens when all teacher can attend the meeting
 
 
-def _all_teachers_can(m, d, h):
-    return sum([m.x[i, j, d, h] for i in teachers for j in students]) <= (1-sum([m.y[d, h] for d in days for h in hours]))*1000
+def _all_teachers_can(m,i,j, d, h):
+    if availability_teachers[i,d,h]==0:
+        return Constraint.Skip
+    return sum([m.x[i, j, d, h]*availability_teachers[i,d,h] ]) <= m.y[d, h]
 
 
-model.all_teachers_can = pyo.Constraint(days, hours, rule=_all_teachers_can)
+model.all_teachers_can = pyo.Constraint(teachers,students,days, hours, rule=_all_teachers_can)
 
 # Classes don't start at 19 hours
 
 
-def _no_start_at_19(m):
-    return sum([m.x[i, j, d, 19] for i in teachers for j in students for d in days]) == 0
+def _no_start_at_19_20(m,h):
+    if h>=19:
+        return sum([m.x[i, j, d, h] for i in teachers for j in students for d in days]) == 0
+    return Constraint.Skip
 
-
-model.no_start_at_19 = pyo.Constraint(rule=_no_start_at_19)
+model.no_start_at_19_20 = pyo.Constraint(hours, rule=_no_start_at_19_20)
 
 # Each class has a duration of 2 hours
 
@@ -139,7 +144,7 @@ model.no_start_at_19 = pyo.Constraint(rule=_no_start_at_19)
 def _two_hours(m, i, j, d, h):
     if h >= 19:
         return pyo.Constraint.Skip
-    return m.x[i, j, d, h]+m.x[i, j, d, h+2] == 2
+    return m.x[i, j, d, h]+m.x[i, j, d, h+2] <= 2
 
 
 model.two_hours = pyo.Constraint(
@@ -148,10 +153,10 @@ model.two_hours = pyo.Constraint(
 # Classes cannot have duration of 1 hours
 
 
-def _no_one_hour(m, i, j, d, h):
+def _no_one_hour(m, i,j, d, h):
     if h == 20:
         return Constraint.Skip
-    return m.x[i, j, d, h]+m.x[i, j, d, h+1] <= 1
+    return sum([m.x[i, j, d, h]+m.x[i, j, d, h+1]]) <= 1
 
 
 model.no_one_hour = pyo.Constraint(
@@ -168,15 +173,27 @@ model.no_consecutive = pyo.Constraint(
     teachers, days, hours, rule=_no_consecutive)
 
 # # Define Objective function
-# model.obj = pyo.Objective(
-#     expr=sum([x[i]*data_gen.cost[i] for i in data_gen.id]))
+model.obj = pyo.Objective(expr=sum(
+    [model.x[i, j, d, h]*D[i, j]*2 for i in teachers for j in students for d in days for h in hours]))
 
-# # Define optimizer
-# opt = SolverFactory('cbc')
-# results = opt.solve(model)
+# Define optimizer
+opt = SolverFactory('cbc')
+results = opt.solve(model)
 
-# # Attach solution to input table
-# data_gen['power_generated'] = [pyo.value(x[i]) for i in data_gen.id]
-# # %%
+print(results)
+# %%
+df = pd.DataFrame(index=pd.MultiIndex.from_tuples(
+    model.x, names=['teacher', 'student', 'day', 'hour']))
+df['x'] = [pyo.value(model.x[i,j,d,h]) for i in teachers for j in students for d in days for h in hours]
 
-# print(results)
+df = df[df['x']==1]
+df
+#%%
+df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(
+    model.y, names=['day', 'hour']))
+df2['y'] = [pyo.value(model.y[d,h]) for d in days for h in hours]
+
+df2 = df2[df2['y']==1]
+df2
+#%%
+print(pyo.value(model.obj))
