@@ -6,7 +6,7 @@ import numpy as numpy
 ##### Extracting sets ######
 def get_sets(availability, general):
     # Time spots
-    hours = [str(i) for i in range(15, 21)]
+    hours = [int(i) for i in range(15, 21)]
 
     # Teachers
     teachers = list(set(availability['Teacher']))
@@ -43,6 +43,7 @@ def get_availability(availability, days_list, hours_list, teachers_list):
     avail = pd.concat([availability, sub])
     avail['From'] = avail['From'].astype(
         'str').str.split(':').apply(lambda x: x[0])
+    avail['From'] = avail['From'].astype('int')
     avail = aux.merge(avail, left_on=['Teacher', 'Day', 'Hour'], right_on=[
                       'Teacher', 'Day', 'From'], how='left')
     avail = avail.drop(columns=['From', 'To']).drop_duplicates().fillna(0)
