@@ -187,13 +187,18 @@ df = pd.DataFrame(index=pd.MultiIndex.from_tuples(
 df['x'] = [pyo.value(model.x[i,j,d,h]) for i in teachers for j in students for d in days for h in hours]
 
 df = df[df['x']==1]
-df
+df = df.reset_index()
 #%%
 df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(
     model.y, names=['day', 'hour']))
 df2['y'] = [pyo.value(model.y[d,h]) for d in days for h in hours]
 
 df2 = df2[df2['y']==1]
-df2
+df2 = df2.reset_index()
+
+# Create Output
+with pd.ExcelWriter('output.xlsx') as writer:
+    df.to_excel(writer,sheet_name='schedule',index=False)
+    df2.to_excel(writer,sheet_name='meeting',index=False)
 #%%
 print(pyo.value(model.obj))
