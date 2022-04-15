@@ -120,13 +120,14 @@ model.one_hour_meeting = pyo.Constraint(days, hours, rule=_one_hour_meeting)
 # Teacher's meeting only happens when all teacher can attend the meeting
 
 
-# def _all_teachers_can(m,i, d, h):
-#     if availability_teachers[i,d,h]==0:
-#         return Constraint.Skip
-#     return m.y[d,h]*availability_teachers[i,d,h] <=1
+def _all_teachers_can(m, d, h):
+    for i in teachers:
+        if availability_teachers[i,d,h]==0:
+            return Constraint.Skip
+    return sum(m.y[d,h]*availability_teachers[i,d,h] for i in teachers) == m.y[d,h]*len(teachers)
 
 
-# model.all_teachers_can = pyo.Constraint(teachers,days, hours, rule=_all_teachers_can)
+model.all_teachers_can = pyo.Constraint(days, hours, rule=_all_teachers_can)
 
 # Classes don't start at 19 hours
 
@@ -150,17 +151,17 @@ def _two_hours(m, i, j, d, h):
 model.two_hours = pyo.Constraint(
     teachers, students, days, hours, rule=_two_hours)
 
-# Classes cannot have duration of 1 hours
+# No overlapped classes
 
 
-def _no_one_hour(m, i, d,h):
+def _no_overlapped(m, i, d,h):
     if h>=19:
         return Constraint.Skip
     return sum([m.x[i, j, d, h]+m.x[i, j, d, h+1] for j in students ]) <= 1
 
 
-model.no_one_hour = pyo.Constraint(
-    teachers, days,hours, rule=_no_one_hour)
+model.no_overlapped = pyo.Constraint(
+    teachers, days,hours, rule=_no_overlapped)
 
 # 2 classes cannot be taught at the same time
 
@@ -181,14 +182,14 @@ opt = SolverFactory('cbc')
 results = opt.solve(model)
 
 print(results)
-# %%
+
 df = pd.DataFrame(index=pd.MultiIndex.from_tuples(
     model.x, names=['teacher', 'student', 'day', 'hour']))
 df['x'] = [pyo.value(model.x[i,j,d,h]) for i in teachers for j in students for d in days for h in hours]
 
 df = df[df['x']==1]
 df = df.reset_index()
-#%%
+
 df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(
     model.y, names=['day', 'hour']))
 df2['y'] = [pyo.value(model.y[d,h]) for d in days for h in hours]
