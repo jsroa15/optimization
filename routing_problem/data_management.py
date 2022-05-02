@@ -16,7 +16,7 @@ def generate_model_data(data_nodes, data_distances):
              for i in range(len(data_distances['from']))}
 
     # Create distances
-    distance = {(data_distances['from'][i], data_distances['to'][i]):data_distances['distance'][i] for i in range(len(data_distances['from']))}
+    distance = {(data_distances['from'][i], data_distances['to'][i]): data_distances['distance'][i] for i in range(len(data_distances['from']))}
 
     # Create V's sets
     v_in = defaultdict(set)
