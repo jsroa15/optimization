@@ -25,12 +25,15 @@ def generate_model_data(data_nodes, data_distances):
     for (i, j) in edges:
         v_in[j].add(i)
         v_out[i].add(j)
-
-    return nodes, edges, distance, v_in, v_out
+    
+    # Extract start and final node
+    start_node  = int(data_nodes[data_nodes['description']=='start']['node'].values)
+    final_node  = int(data_nodes[data_nodes['description']=='finish']['node'].values)
+    return nodes, edges, distance, v_in, v_out, start_node, final_node
 
 
 def generate_parameters():
 
-    nodes, edges, distance, v_in, v_out = generate_model_data(
+    nodes, edges, distance, v_in, v_out, start_node, final_node = generate_model_data(
         data_nodes, data_distances)
-    return nodes, edges, distance, v_in, v_out
+    return nodes, edges, distance, v_in, v_out, start_node, final_node
