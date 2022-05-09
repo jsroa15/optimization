@@ -92,7 +92,7 @@ def get_parameters(general):
     student_level = general[general['Type'] == 'Student']
     SL = student_level.set_index('Name')['Level']
 
-    # Teacher Supply
+    # Teacher Level
     teacher_level = general[general['Type'] == 'Teacher']
     TL = teacher_level.set_index('Name')['Level']
 
