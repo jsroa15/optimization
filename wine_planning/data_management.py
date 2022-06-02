@@ -1,15 +1,20 @@
 import pandas as pd
 import numpy as numpy
 
+# Data read
+
+def read_data(input_file):
+    profit = pd.read_excel(input_file, sheet_name='Profit')
+    terrains = pd.read_excel(input_file, sheet_name='Terrains')
+    general = pd.read_excel(input_file, sheet_name='General Parameters')
+    casks = pd.read_excel(input_file, sheet_name='Casks')
+    production_limit = pd.read_excel(input_file, sheet_name='Production Limit')
+    
+    return profit, terrains, general, casks, production_limit
 
 # Function definitions
 ##### Extracting sets ######
 
-profit = pd.read_excel('data.xlsx', sheet_name='Profit')
-terrains = pd.read_excel('data.xlsx', sheet_name='Terrains')
-budget = pd.read_excel('data.xlsx', sheet_name='Budget')
-casks = pd.read_excel('data.xlsx', sheet_name='Casks')
-production_limit = pd.read_excel('data.xlsx', sheet_name='Production Limit')
 def get_sets(profit,terrains,casks,production_limit):
     
     age = list(set(profit['Age']))
@@ -18,61 +23,8 @@ def get_sets(profit,terrains,casks,production_limit):
     cask = list(set(casks['Cask Year']))
     
     return age, terrains, years, cask
-    
 
-def get_availability(availability, days_list, hours_list, teachers_list):
-
-    # Build auxiliar availability frames to full teacher's schedule
-    df_days = pd.DataFrame(
-        {"Day": days_list, "Value": [1 for i in range(len(days_list))]})
-    df_teachers = pd.DataFrame({"Teacher": teachers_list, "Value": [
-                               1 for i in range(len(teachers_list))]})
-    df_hours = pd.DataFrame({"Hour": hours_list, "Value": [
-                            1 for i in range(len(hours_list))]})
-
-    aux = df_teachers.merge(df_days, on='Value', how='outer')
-    aux = aux.merge(df_hours, on='Value', how='outer')
-
-    availability['Value'] = 1
-    sub = availability[['Teacher', 'To', 'Day', 'Value']]
-    sub.rename(columns={'To': 'From'}, inplace=True)
-
-    avail = pd.concat([availability, sub])
-    avail['From'] = avail['From'].astype(
-        'str').str.split(':').apply(lambda x: x[0])
-    avail['From'] = avail['From'].astype('int')
-    avail = aux.merge(avail, left_on=['Teacher', 'Day', 'Hour'], right_on=[
-                      'Teacher', 'Day', 'From'], how='left')
-    avail = avail.drop(columns=['From', 'To']).drop_duplicates().fillna(0)
-    avail['Value_x'] = avail['Value_x']-avail['Value_y']
-    avail.rename(columns={'Value_x': 'Availability'}, inplace=True)
-
-    availability = avail.set_index(['Teacher', 'Day', 'Hour'])['Availability']
-
-    return availability
-
-
-def get_distance(general):
-    # Calculate Distances between teacher and student
-    std_dis = general[general['Type'] ==
-                      'Student'][['Name', 'Street', 'Avenue']]
-    std_dis['one'] = 1
-    teacher_dis = general[general['Type'] ==
-                          'Teacher'][['Name', 'Street', 'Avenue']]
-    teacher_dis['one'] = 1
-    distances = std_dis.merge(teacher_dis, on='one', how='outer')
-
-    dis_street = abs(distances['Street_x']-distances['Street_y'])
-    dis_avenue = abs(distances['Avenue_x']-distances['Avenue_y'])
-    distances['Distance'] = dis_street+dis_avenue
-    distances.rename(columns={'Name_x': 'Student',
-                              'Name_y': 'Teacher'}, inplace=True)
-    distances = distances.set_index(['Teacher', 'Student'])['Distance']
-
-    return distances
-
-
-def get_parameters(profit,terrains,budget,casks,production_limit):
+def get_parameters(profit,terrains,general,casks,production_limit):
     # Profit
     PR = profit.set_index('Age')['Gross Profit']
     
@@ -86,4 +38,42 @@ def get_parameters(profit,terrains,budget,casks,production_limit):
     terrains.replace({'YES':1,'NO':0},inplace=True)
     IP = terrains.set_index('Terrain')['Planted']
     
-    pass
+    # HR Budget
+    HRB = general.iloc[5,1]
+    
+    # Initial Workers
+    IW = general.iloc[0,1]
+    
+    # Hiring cost
+    HC = general.iloc[2,1]
+    
+    # Lay off cost
+    FC = general.iloc[3,1]
+    
+    # Annual Salary
+    AS = general.iloc[1,1]
+    
+    # Maintenance workers needed
+    MW = general.iloc[6,1]
+    
+    # Plant workers needed
+    PW = general.iloc[7,1]
+    
+    # Seed Price
+    SP = general.iloc[4,1]
+    
+    # Botle production
+    BP = production_limit.set_index(['Age','Period'])['Production Limit']
+    
+    return PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP
+
+def get_optimization_data(input_file):
+    profit, terrains, general, casks, production_limit=read_data(input_file)
+    
+    
+    # Sets
+    get_sets(profit,terrains,casks,production_limit)
+
+    # Parameters
+    get_parameters(profit,terrains,general,casks,production_limit)
+    

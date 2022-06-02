@@ -6,21 +6,8 @@ import pandas as pd
 from data_management import *
 
 # Read Data
-profit = pd.read_excel('data.xlsx', sheet_name='Profit')
-terrains = pd.read_excel('data.xlsx', sheet_name='Terrains')
-budget = pd.read_excel('data.xlsx', sheet_name='Budget')
-casks = pd.read_excel('data.xlsx', sheet_name='Casks')
-production_limit = pd.read_excel('data.xlsx', sheet_name='Production Limit')
-
-
-# Get data for LP model
-# Sets
-get_sets(profit,terrains,casks,production_limit)
-
-# Parameters
-get_parameters(profit,terrains,budget,casks,production_limit)
-
-
+input_file = 'data.xlsx'
+age, terrains, years, cask, PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP = get_optimization_data(input_file)
 
 # Create model
 model = pyo.ConcreteModel()
