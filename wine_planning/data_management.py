@@ -3,77 +3,86 @@ import numpy as numpy
 
 # Data read
 
+
 def read_data(input_file):
     profit = pd.read_excel(input_file, sheet_name='Profit')
     terrains = pd.read_excel(input_file, sheet_name='Terrains')
     general = pd.read_excel(input_file, sheet_name='General Parameters')
     casks = pd.read_excel(input_file, sheet_name='Casks')
     production_limit = pd.read_excel(input_file, sheet_name='Production Limit')
-    
+
     return profit, terrains, general, casks, production_limit
 
 # Function definitions
 ##### Extracting sets ######
 
-def get_sets(profit,terrains,casks,production_limit):
-    
+
+def get_sets(profit, terrains, casks, production_limit):
+
     age = list(set(profit['Age']))
     terrains = list(set(terrains['Terrain']))
     years = list(set(production_limit['Period']))
     cask = list(set(casks['Cask Year']))
-    
+
     return age, terrains, years, cask
 
-def get_parameters(profit,terrains,general,casks,production_limit):
+##### Extracting parameters ######
+
+
+def get_parameters(profit, terrains, general, casks, production_limit):
     # Profit
     PR = profit.set_index('Age')['Gross Profit']
-    
+
     # Terrain Size
     TS = terrains.set_index('Terrain')['Acres']
- 
+
     # Terrain Productivity
     TP = terrains.set_index('Terrain')['Productivity']
-    
+
     # Terrains is Planted?
-    terrains.replace({'YES':1,'NO':0},inplace=True)
+    terrains.replace({'YES': 1, 'NO': 0}, inplace=True)
     IP = terrains.set_index('Terrain')['Planted']
-    
+
     # HR Budget
-    HRB = general.iloc[5,1]
-    
+    HRB = general.iloc[5, 1]
+
     # Initial Workers
-    IW = general.iloc[0,1]
-    
+    IW = general.iloc[0, 1]
+
     # Hiring cost
-    HC = general.iloc[2,1]
-    
+    HC = general.iloc[2, 1]
+
     # Lay off cost
-    FC = general.iloc[3,1]
-    
+    FC = general.iloc[3, 1]
+
     # Annual Salary
-    AS = general.iloc[1,1]
-    
+    AS = general.iloc[1, 1]
+
     # Maintenance workers needed
-    MW = general.iloc[6,1]
-    
+    MW = general.iloc[6, 1]
+
     # Plant workers needed
-    PW = general.iloc[7,1]
-    
+    PW = general.iloc[7, 1]
+
     # Seed Price
-    SP = general.iloc[4,1]
-    
+    SP = general.iloc[4, 1]
+
     # Botle production
-    BP = production_limit.set_index(['Age','Period'])['Production Limit']
-    
+    BP = production_limit.set_index(['Age', 'Period'])['Production Limit']
+
     return PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP
 
+
 def get_optimization_data(input_file):
-    profit, terrains, general, casks, production_limit=read_data(input_file)
-    
-    
+    profit, terrains, general, casks, production_limit = read_data(input_file)
+
     # Sets
-    get_sets(profit,terrains,casks,production_limit)
+    age, terrains_set, years, cask = get_sets(
+        profit, terrains, casks, production_limit)
 
     # Parameters
-    get_parameters(profit,terrains,general,casks,production_limit)
-    
+    PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP = get_parameters(
+        profit, terrains, general, casks, production_limit)
+
+    return (age, terrains_set, years, cask, PR, TS, TP,
+            IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP)
