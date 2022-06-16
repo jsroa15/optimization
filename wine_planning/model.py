@@ -31,37 +31,60 @@ input_file = "data.xlsx"
 model = pyo.ConcreteModel()
 
 # Create model variables
-model.x = pyo.Var(teachers, students, days, hours, within=pyo.Binary)
+# Production, inventory, and budget
+model.x = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.s = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.v = pyo.Var(age, years, within=pyo.Reals, bounds=(0,None))
+model.p = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.y = pyo.Var(terrains, years, within=pyo.Binary)
+model.b = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
 
-model.y = pyo.Var(days, hours, within=pyo.Binary)
+# HR variables
+model.h = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.f = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.ie = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+
+
+# Define Objective function
+model.obj = pyo.Objective(
+    expr=sum(
+        [
+            model.v[k, j] * PR[k]
+            for k in age
+            for j in years
+        ]
+        - [model.s[j]*SP+model.f[j]*FC+model.h[j]*HC+model.ie[j]*AS for j in years]
+        + pyo.value(model.b[2016])
+    )
+)
 
 # Create model constraints
-# Satisfy students demand
+# Wine Production
 
 
-def _students_demand(m, j):
-    return sum([m.x[i, j, d, h] for i in teachers for d in days for h in hours]) >= C[j]
+def _wine_production(j):
+    return model.x[j] == sum([TP[t]*model.y[t,j]*IP[t] for t in terrains])
 
 
-model.students_demand = pyo.Constraint(students, rule=_students_demand)
+model.wine_production = pyo.Constraint(years, rule=_wine_production)
 
-# Satisfy teachers supply
-
-
-def _teachers_supply(m, i):
-    return sum([m.x[i, j, d, h] for j in students for d in days for h in hours]) <= O[i]
+# HR constraint
 
 
-model.teachers_supply = pyo.Constraint(teachers, rule=_teachers_supply)
-
-# # Levels student and teacher
-
-
-def _levels(m, i, j, d, h):
-    return (m.x[i, j, d, h] * TL[i]) >= m.x[i, j, d, h] * SL[j]
+def _employees_inventory(m, j):
+    return m.ie[j]==m.ie[j-1]-m.f[j]+m.h[j]
 
 
-model._levels = pyo.Constraint(teachers, students, days, hours, rule=_levels)
+model.employees_inventory = pyo.Constraint(years, rule=_employees_inventory)
+
+# Budget Constraint
+
+
+def _budget(m, j):
+    return m.b[j]==m.b[j-1]-m.f[j]*FC-m.h[j]*HC-m.ie[j]*AS
+
+
+model._budget = pyo.Constraint(years, rule=_budget)
 
 # Teachers Availability
 
@@ -186,18 +209,7 @@ def _no_consecutive(m, i, d, h):
 
 model.no_consecutive = pyo.Constraint(teachers, days, hours, rule=_no_consecutive)
 
-# # Define Objective function
-model.obj = pyo.Objective(
-    expr=sum(
-        [
-            model.x[i, j, d, h] * D[i, j] * 2
-            for i in teachers
-            for j in students
-            for d in days
-            for h in hours
-        ]
-    )
-)
+
 
 # Define optimizer
 opt = SolverFactory("cbc")
