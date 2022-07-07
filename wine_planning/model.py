@@ -86,59 +86,52 @@ def _budget(m, j):
 
 model._budget = pyo.Constraint(years, rule=_budget)
 
-# Teachers Availability
+# Seed Constraint
 
 
-def _teachers_availability(m, i, j, d, h):
-    if availability_teachers[i, d, h] == 0:
-        return Constraint.Skip
-    return (m.x[i, j, d, h] * availability_teachers[i, d, h]) <= 1
+def _seeds(m, j):
+    return m.s[j] == sum([y[t,j]*SP*TS[t]*IP[t] for t in terrains])
 
 
-model.teachers_availability = pyo.Constraint(
-    teachers, students, days, hours, rule=_teachers_availability
-)
+model.seeds = pyo.Constraint(years, rule = _seeds)
 
-# # Teacher must teach at least one class in the week
+# Productive Terrains
 
 
-def _one_class_week(m, i):
-    return sum([m.x[i, j, d, h] for j in students for d in days for h in hours]) >= 1
+def _productive_terrains(m, j):
+    return m.p[j] == m.p[j-1] + sum([m.y[t, j-1]*IP[t] for t in terrains])
 
 
-model.one_class_week = pyo.Constraint(teachers, rule=_one_class_week)
+model.productive_terrains = pyo.Constraint(years, rule=_productive_terrains)
 
-# # A student cannot receive more than one class in a day
-
-
-def _one_class_day(m, j, d):
-    return sum([m.x[i, j, d, h] for i in teachers for h in hours]) <= 1
+# Requested Employees
 
 
-model.one_class_day = pyo.Constraint(students, days, rule=_one_class_day)
-
-# The weekly meeting only occurs when there's no class
-
-
-def _meeting_no_class(m, d):
-    return (
-        sum([m.x[i, j, d, h] for i in teachers for j in students for h in hours])
-        <= (1 - sum(m.y[d, h] for h in hours)) * 1000
-    )
+def _requested_employees(m, j):
+    return sum([m.p[j]*TS[t]*MW + m.y[t,j]*TS[t]*PW*IP[t] for t in terrains]) == m.ie[j]
 
 
-model._meeting_no_class = pyo.Constraint(days, rule=_meeting_no_class)
+model.requested_employees = pyo.Constraint(years, rule=_requested_employees)
 
-# Only one teacher´s meeting in the week
-
-
-def _one_meeting(m):
-    return sum([m.y[d, h] for d in days for h in hours]) == 1
+# A terrain can be planted once
 
 
-model.one_meeting = pyo.Constraint(rule=_one_meeting)
+def _once_planted(m, t):
+    return sum([m.y[t,j] for j in years]) == (1-IP[t])
 
-# The teacher's meeting only has 1 hour duration
+
+model.once_planted = pyo.Constraint(terrains, rule=_once_planted)
+
+# Botles production limit
+
+
+def _production_limit(m,k,j):
+    return m.v[k,j] == BP[k,j]
+
+
+model.production_limit = pyo.Constraint(age, years,rule=_production_limit)
+
+# Cask constraints
 
 
 def _one_hour_meeting(m, d, h):
