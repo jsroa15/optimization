@@ -25,6 +25,7 @@ input_file = "data.xlsx"
     PW,
     SP,
     BP,
+    IC,
 ) = get_optimization_data(input_file)
 
 # Create model
@@ -38,6 +39,7 @@ model.v = pyo.Var(age, years, within=pyo.Reals, bounds=(0,None))
 model.p = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
 model.y = pyo.Var(terrains, years, within=pyo.Binary)
 model.b = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.c = pyo.Var(cask,years, within=pyo.Reals, bounds=(0,None))
 
 # HR variables
 model.h = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
@@ -134,9 +136,9 @@ model.production_limit = pyo.Constraint(age, years,rule=_production_limit)
 # Cask constraints
 
 
-def _one_hour_meeting(m, d, h):
-    if h == 20:
-        return Constraint.Skip
+def _cask_constraint(m, f, j):
+    if j == 2012:
+        return m.c[f,j] == IC[f] - sum(m.v[k,j] for k in age)
     return m.y[d, h] + m.y[d, h + 1] <= 1
 
 

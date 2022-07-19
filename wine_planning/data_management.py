@@ -71,8 +71,11 @@ def get_parameters(profit, terrains, general, casks, production_limit):
 
     # Botle production
     BP = production_limit.set_index(["Age", "Period"])["Production Limit"]
+    
+    # Initial Casks
+    IC = casks.set_index("Cask Year")["Amount"]
 
-    return PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP
+    return PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP, IC
 
 
 def get_optimization_data(input_file):
@@ -82,7 +85,7 @@ def get_optimization_data(input_file):
     age, terrains_set, years, cask = get_sets(profit, terrains, casks, production_limit)
 
     # Parameters
-    PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP = get_parameters(
+    PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP, IC = get_parameters(
         profit, terrains, general, casks, production_limit
     )
 
@@ -104,4 +107,5 @@ def get_optimization_data(input_file):
         PW,
         SP,
         BP,
+        IC,
     )
