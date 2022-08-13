@@ -23,9 +23,9 @@ def get_sets(profit, terrains, casks, production_limit):
     age = list(set(profit["Age"]))
     terrains = list(set(terrains["Terrain"]))
     years = list(set(production_limit["Period"]))
-    cask = list(set(casks["Cask Year"]))
+    age_period_cask = list(set(casks["Cask Year"]))
 
-    return age, terrains, years, cask
+    return age, terrains, years, age_period_cask
 
 
 ##### Extracting parameters ######
@@ -82,7 +82,7 @@ def get_optimization_data(input_file):
     profit, terrains, general, casks, production_limit = read_data(input_file)
 
     # Sets
-    age, terrains_set, years, cask = get_sets(profit, terrains, casks, production_limit)
+    age, terrains_set, years, age_period_cask = get_sets(profit, terrains, casks, production_limit)
 
     # Parameters
     PR, TS, TP, IP, HRB, IW, HC, FC, AS, MW, PW, SP, BP, IC = get_parameters(
@@ -93,7 +93,7 @@ def get_optimization_data(input_file):
         age,
         terrains_set,
         years,
-        cask,
+        age_period_cask,
         PR,
         TS,
         TP,

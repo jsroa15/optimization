@@ -1,7 +1,7 @@
 # %%
-import pyomo.environ as pyo
-from pyomo.environ import *
-from pyomo.opt import SolverFactory
+#import pyomo.environ as pyo
+#from pyomo.environ import *
+#from pyomo.opt import SolverFactory
 import pandas as pd
 from data_management import *
 
@@ -11,7 +11,7 @@ input_file = "data.xlsx"
     age,
     terrains,
     years,
-    cask,
+    age_period_cask,
     PR,
     TS,
     TP,
@@ -39,7 +39,7 @@ model.v = pyo.Var(age, years, within=pyo.Reals, bounds=(0,None))
 model.p = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
 model.y = pyo.Var(terrains, years, within=pyo.Binary)
 model.b = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
-model.c = pyo.Var(cask,years, within=pyo.Reals, bounds=(0,None))
+model.c = pyo.Var(age_period_cask,years, within=pyo.Reals, bounds=(0,None))
 
 # HR variables
 model.h = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
@@ -92,7 +92,7 @@ model._budget = pyo.Constraint(years, rule=_budget)
 
 
 def _seeds(m, j):
-    return m.s[j] == sum([y[t,j]*SP*TS[t]*IP[t] for t in terrains])
+    return m.s[j] == sum([m.y[t,j]*SP*TS[t]*IP[t] for t in terrains])
 
 
 model.seeds = pyo.Constraint(years, rule = _seeds)
@@ -102,7 +102,7 @@ model.seeds = pyo.Constraint(years, rule = _seeds)
 
 def _productive_terrains(m, j):
     return m.p[j] == m.p[j-1] + sum([m.y[t, j-1]*IP[t] for t in terrains])
-
+    
 
 model.productive_terrains = pyo.Constraint(years, rule=_productive_terrains)
 
