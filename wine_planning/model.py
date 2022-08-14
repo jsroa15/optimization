@@ -1,7 +1,7 @@
 # %%
-#import pyomo.environ as pyo
-#from pyomo.environ import *
-#from pyomo.opt import SolverFactory
+import pyomo.environ as pyo
+from pyomo.environ import *
+from pyomo.opt import SolverFactory
 import pandas as pd
 from data_management import *
 
@@ -140,69 +140,6 @@ def _cask_constraint(m, f, j):
     if j == 2012:
         return m.c[f,j] == IC[f] - sum(m.v[k,j] for k in age)
     return m.y[d, h] + m.y[d, h + 1] <= 1
-
-
-model.one_hour_meeting = pyo.Constraint(days, hours, rule=_one_hour_meeting)
-
-
-# Teacher's meeting only happens when all teacher can attend the meeting
-
-
-def _all_teachers_can(m, d, h):
-    for i in teachers:
-        if availability_teachers[i, d, h] == 0:
-            return Constraint.Skip
-    return sum(m.y[d, h] * availability_teachers[i, d, h] for i in teachers) == m.y[
-        d, h
-    ] * len(teachers)
-
-
-model.all_teachers_can = pyo.Constraint(days, hours, rule=_all_teachers_can)
-
-# Classes don't start at 19 hours
-
-
-def _no_start_at_19_20(m, h):
-    if h >= 19:
-        return (
-            sum([m.x[i, j, d, h] for i in teachers for j in students for d in days])
-            == 0
-        )
-    return Constraint.Skip
-
-
-model.no_start_at_19_20 = pyo.Constraint(hours, rule=_no_start_at_19_20)
-
-# Each class has a duration of 2 hours
-
-
-def _two_hours(m, i, j, d, h):
-    if h >= 19:
-        return pyo.Constraint.Skip
-    return m.x[i, j, d, h] + m.x[i, j, d, h + 2] <= 2
-
-
-model.two_hours = pyo.Constraint(teachers, students, days, hours, rule=_two_hours)
-
-# No overlapped classes
-
-
-def _no_overlapped(m, i, d, h):
-    if h >= 19:
-        return Constraint.Skip
-    return sum([m.x[i, j, d, h] + m.x[i, j, d, h + 1] for j in students]) <= 1
-
-
-model.no_overlapped = pyo.Constraint(teachers, days, hours, rule=_no_overlapped)
-
-# 2 classes cannot be taught at the same time
-
-
-def _no_consecutive(m, i, d, h):
-    return sum([m.x[i, j, d, h] for j in students]) <= 1
-
-
-model.no_consecutive = pyo.Constraint(teachers, days, hours, rule=_no_consecutive)
 
 
 
