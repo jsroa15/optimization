@@ -23,6 +23,7 @@ def get_sets(profit, terrains, casks, production_limit):
     age = list(set(profit["Age"]))
     terrains = list(set(terrains["Terrain"]))
     years = list(set(production_limit["Period"]))
+    years.sort()
     age_period_cask = list(set(casks["Cask Year"]))
 
     return age, terrains, years, age_period_cask
