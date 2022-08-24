@@ -58,7 +58,7 @@ model.obj = pyo.Objective(
             for j in years
         ]
     )
-    + model.b[2016]
+    + model.b[years[-1]]
 )
 
 # Create model constraints
@@ -97,7 +97,7 @@ model.employees_inventory = pyo.Constraint(years, rule=_employees_inventory)
 
 # Cumulative planted terrains
 def _cumulative(m, t):
-    return m.cum[t] == sum(m.y[t, j - 1] for j in years)
+    return m.cum[t] == sum(m.y[t, j - 1] for j in years if j > 2012)
 
 
 model.cumulative = pyo.Constraint(terrains, rule=_cumulative)
