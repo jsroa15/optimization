@@ -33,13 +33,14 @@ model = pyo.ConcreteModel()
 
 # Create model variables
 # Production, inventory, and budget
+model.y = pyo.Var(terrains, years, within=pyo.Binary)
 model.x = pyo.Var(age, years, within=pyo.Reals, bounds=(0,None))
 model.s = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
+model.b = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
 model.v = pyo.Var(age, years, within=pyo.Reals, bounds=(0,None))
 model.p = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
-model.y = pyo.Var(terrains, years, within=pyo.Binary)
-model.b = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
 model.c = pyo.Var(age_period_cask,years, within=pyo.Reals, bounds=(0,None))
+model.cum = pyo.Var(terrains, within=pyo.Reals, bounds=(0,None))
 model.q = pyo.Var(years, within=pyo.Reals, bounds=(0,None))
 
 # HR variables
@@ -95,6 +96,13 @@ def _employees_inventory(m, j):
 model.employees_inventory = pyo.Constraint(years, rule=_employees_inventory)
 
 
+# Cumulative planted terrains
+def _cumulative(m, t):
+    return m.cum[t] == sum(m.y[t,j-1] for j in years)
+
+model.cumulative = pyo.Constraint(terrains, rule=_cumulative)
+
+
 # Requested Employees
 
 
@@ -102,7 +110,7 @@ def _requested_employees(m, j):
     if j == years[0]: 
         return sum([TS[t]*MW*IP[t] + m.y[t,j]*TS[t]*PW*IP[t] for t in terrains]) == m.ie[j]
     else:
-        return sum([m.y[t,j-1]*MW*TS[t] + m.y[t,j]*TS[t]*PW*IP[t] for t in terrains]) == m.ie[j]
+        return sum([TS[t]*MW*IP[t] + m.cum[t]*TS[t]*MW + m.y[t,j]*TS[t]*PW*IP[t] for t in terrains]) == m.ie[j]
 
 model.requested_employees = pyo.Constraint(years, rule=_requested_employees)
 
