@@ -40,7 +40,7 @@ model = pyo.ConcreteModel()
 # Create model variables
 # Production, inventory, and budget
 model.y = pyo.Var(terrains_set, years_set, within=pyo.Binary)
-model.x = pyo.Var(age_set, years_set, within=pyo.Reals, bounds=(0, None))
+model.x = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.b = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.v = pyo.Var(age_set, years_set, within=pyo.Reals, bounds=(0, None))
 model.p = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
@@ -149,6 +149,31 @@ def _available_budget(m, t):
 
 
 model.available_budget = pyo.Constraint(years_set, rule=_available_budget)
+
+
+# Production Constraints
+
+
+# ***Production for each period***
+def _production(m, t):
+    return m.x[t] == sum(PRODUCTIVITY[j] for j in is_planted_set) + sum(
+        m.y[j, t] * PRODUCTIVITY[j] for j in not_planted_set
+    )
+
+
+model.production = pyo.Constraint(years_set, rule=_production)
+
+
+# ***A terrain can be planted only once***
+def _terrain_planted_once(m, j):
+    return sum(m.y[j, t] for t in years_set) <= 1
+
+
+model.terrain_planted_once = pyo.Constraint(not_planted_set, rule=_terrain_planted_once)
+
+
+
+
 stop = 1
 
 # # Wine Production
