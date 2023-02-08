@@ -215,159 +215,31 @@ def _terrain_planted(m, j):
 
 model.terrain_planted = pyo.Constraint(not_planted_set, rule=_terrain_planted)
 
-stop = 1
 
-# # Wine Production
+# ***Relation between cask and sales***
+def _cask_sales(m, i):
+    if i == age_set[0]:
+        return sum(m.v[i, t] for t in years_set) <= sum(m.cask1[t] for t in years_set)
+    elif i == age_set[1]:
+        return sum(m.v[i, t] for t in years_set) == sum(m.cask3[t] for t in years_set)
+    else:
+        pyo.Constraint.Skip
 
 
-# model.production_harvest_1 = pyo.Constraint(years, rule=_production_harvest_1)
+model.cask_sales = pyo.Constraint(age_set, rule=_cask_sales)
 
 
-# def _production_harvest_2(m, j):
-#     return m.q[j] == sum([m.y[t, j] * TP[t] + TP[t] * IP[t] for t in terrains])
+# Sales and bottle production
 
 
-# model.production_harvest_2 = pyo.Constraint(years, rule=_production_harvest_2)
+# ***Sales cannot exceed bottles production***
+def _bottles_limit(m, i, t):
+   return m.v[i,t] <= BP[i,t]
+    
+    
+model.bottles_limit = pyo.Constraint(age_set,years_set, rule=_bottles_limit)
 
 
-# # HR constraint
-
-
-# def _employees_inventory(m, j):
-#     if j == years[0]:
-#         return m.ie[j] == IW - m.f[j] + m.h[j]
-#     else:
-#         return m.ie[j] == m.ie[j - 1] - m.f[j] + m.h[j]
-
-
-# model.employees_inventory = pyo.Constraint(years, rule=_employees_inventory)
-
-
-# # Cumulative planted terrains
-# def _cumulative(m, t):
-#     return m.cum[t] == sum(m.y[t, j - 1] for j in years if j > 2012)
-
-
-# model.cumulative = pyo.Constraint(terrains, rule=_cumulative)
-
-
-# # Requested Employees
-
-
-# def _requested_employees(m, j):
-#     if j == years[0]:
-#         return (
-#             sum([TS[t] * MW * IP[t] + m.y[t, j] * TS[t] * PW * IP[t] for t in terrains])
-#             == m.ie[j]
-#         )
-#     else:
-#         return (
-#             sum(
-#                 [
-#                     TS[t] * MW * IP[t]
-#                     + m.cum[t] * TS[t] * MW
-#                     + m.y[t, j] * TS[t] * PW * IP[t]
-#                     for t in terrains
-#                 ]
-#             )
-#             == m.ie[j]
-#         )
-
-
-# model.requested_employees = pyo.Constraint(years, rule=_requested_employees)
-
-# # Budget Constraint
-
-
-# def _budget(m, j):
-#     if j == years[0]:
-#         m.b[j] == HRB - m.f[j] * FC - m.h[j] * HC - m.ie[j] * AS
-#     else:
-#         return m.b[j] == m.b[j - 1] - m.f[j] * FC - m.h[j] * HC - m.ie[j] * AS
-
-
-# model._budget = pyo.Constraint(years, rule=_budget)
-
-# # Seed Constraint
-
-
-# def _seeds(m, j):
-#     return m.s[j] == sum([m.y[t, j] * SP * TS[t] * IP[t] for t in terrains])
-
-
-# model.seeds = pyo.Constraint(years, rule=_seeds)
-
-# # Productive Terrains
-
-
-# def _productive_terrains(m, j):
-#     if j == years[0]:
-#         return m.p[j] == sum(IP) + sum([m.y[t, j - 1] * IP[t] for t in terrains])
-#     else:
-#         return m.p[j] == m.p[j - 1] + sum([m.y[t, j - 1] * IP[t] for t in terrains])
-
-
-# model.productive_terrains = pyo.Constraint(years, rule=_productive_terrains)
-
-# # A terrain can be planted once
-
-
-# def _once_planted(m, t):
-#     return sum([m.y[t, j] for j in years]) == (1 - IP[t])
-
-
-# model.once_planted = pyo.Constraint(terrains, rule=_once_planted)
-
-# # Botles production limit
-
-
-# def _production_limit(m, k, j):
-#     return m.x[k, j] == BP[k, j]
-
-
-# model.production_limit = pyo.Constraint(age, years, rule=_production_limit)
-
-# # Cask constraint, production and sales relationship
-
-
-# def _cask_constraint_1(m, j):
-#     if j == years[0]:
-#         return m.c[1, j] == IC[1] + sum(m.x[k, j] for k in age)
-#     else:
-#         return m.c[1, j] == sum(m.x[k, j] for k in age)
-
-
-# model.cask_constraint_1 = pyo.Constraint(years, rule=_cask_constraint_1)
-
-
-# def _cask_constraint_2(m, j):
-#     if j == years[0]:
-#         return m.c[2, j] == IC[2] + m.x[3, j - 1] - m.v[1, j]
-#     else:
-#         return m.c[2, j] == m.x[3, j - 1] - m.v[1, j]
-
-
-# model.cask_constraint_2 = pyo.Constraint(years, rule=_cask_constraint_2)
-
-
-# def _cask_constraint_3(m, j):
-#     if j == years[0]:
-#         return m.c[3, j] == IC[3] + m.x[3, j - 2]
-#     else:
-#         return m.c[3, j] == m.x[3, j - 2]
-
-
-# model.cask_constraint_3 = pyo.Constraint(years, rule=_cask_constraint_3)
-
-
-# def _cask_constraint_4(m, j):
-#     if j == years[0]:
-#         return m.c[3, j] == IC[3] + m.x[3, j - 2]
-#     else:
-#         return m.c[3, j] == m.v[3, j + 1]
-
-
-# model.cask_constraint_4 = pyo.Constraint(years, rule=_cask_constraint_4)
 
 # # Define optimizer
 # opt = SolverFactory("cbc")
