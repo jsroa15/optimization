@@ -39,33 +39,27 @@ model = pyo.ConcreteModel()
 
 # Create model variables
 # Production, inventory, and budget
-# model.y = pyo.Var(terrains, years, within=pyo.Binary)
-# model.x = pyo.Var(age, years, within=pyo.Reals, bounds=(0, None))
-# model.s = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
-# model.b = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
-# model.v = pyo.Var(age, years, within=pyo.Reals, bounds=(0, None))
-# model.p = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
-# model.c = pyo.Var(age_period_cask, years, within=pyo.Reals, bounds=(0, None))
-# model.cum = pyo.Var(terrains, within=pyo.Reals, bounds=(0, None))
-# model.q = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
-
-# # HR variables
-# model.h = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
-# model.f = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
-# model.ie = pyo.Var(years, within=pyo.Reals, bounds=(0, None))
+model.y = pyo.Var(terrains_set, years_set, within=pyo.Binary)
+model.x = pyo.Var(age_set, years_set, within=pyo.Reals, bounds=(0, None))
+model.b = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.v = pyo.Var(age_set, years_set, within=pyo.Reals, bounds=(0, None))
+model.p = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.pl = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.h = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.f = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.ie = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.mant = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.cask1 = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.cask2 = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.cask3 = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 
 
 # # Define Objective function
-# model.obj = pyo.Objective(
-#     expr=sum([model.v[k, j] * PR[k] for k in age for j in years])
-#     - sum(
-#         [
-#             model.s[j] * SP + model.f[j] * FC + model.h[j] * HC + model.ie[j] * AS
-#             for j in years
-#         ]
-#     )
-#     + model.b[years[-1]]
-# )
+model.PROFIT = sum(model.v[i,t]*PROFIT[i] for i in age_set for t in years_set)
+model.PEOPLE_COST = sum(model.f[t]*FC+model.h[t]*HC+model.ie[t]*AS for t in years_set)
+model.SEED_COST = sum(model.y[j,t]*SP*SIZE[j] for j in terrains_set for t in years_set)
+
+model.obj = pyo.Objective(expr=model.PROFIT-model.PEOPLE_COST-model.SEED_COST)
 
 # # Create model constraints
 # # Wine Production
