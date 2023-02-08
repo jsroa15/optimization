@@ -173,6 +173,47 @@ model.terrain_planted_once = pyo.Constraint(not_planted_set, rule=_terrain_plant
 
 
 
+# Casks and sales constraints
+
+
+# ***One year cask***
+def _cask_1(m, t):
+    if t == years_set[0]:
+        return m.cask1[t] == CASK1_0
+    else:
+        return m.cask1[t] == m.x[t-1]
+    
+
+model.cask_1 = pyo.Constraint(years_set, rule=_cask_1)
+
+
+# ***Two year cask***
+def _cask_2(m, t):
+    if t in [years_set[0],years_set[1]]:
+        return m.cask2[t] == CASK2_0
+    else:
+        return m.cask2[t] == m.x[t-2]
+    
+
+model.cask_2 = pyo.Constraint(years_set, rule=_cask_2)
+
+# ***Three year cask***
+def _cask_3(m, t):
+    if t in [years_set[0],years_set[1],years_set[2]]:
+        return m.cask3[t] == CASK3_0
+    else:
+        return m.cask3[t] == m.x[t-3]
+    
+
+model.cask_3 = pyo.Constraint(years_set, rule=_cask_3)
+
+
+# ***A terrain can be planted only once***
+def _terrain_planted(m, j):
+    return sum(m.y[j, t] for t in years_set) <= 1
+
+
+model.terrain_planted = pyo.Constraint(not_planted_set, rule=_terrain_planted)
 
 stop = 1
 
