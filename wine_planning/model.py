@@ -61,15 +61,27 @@ model.SEED_COST = sum(model.y[j,t]*SP*SIZE[j] for j in terrains_set for t in yea
 
 model.obj = pyo.Objective(expr=model.PROFIT-model.PEOPLE_COST-model.SEED_COST)
 
-# # Create model constraints
+# Create model constraints
+#***Available employees***
+def _available_employees(m, t):
+    if t == years_set[0]:
+        return m.ie[t] == IW-m.f[t]+m.h[t]
+    else:
+        return m.ie[t] == m.ie[t-1]+m.f[t]+m.h[t]
+
+model.available_employees = pyo.Constraint(years_set,rule=_available_employees)
+
+#***Hired Employees***
+def _hired_employees(m, t):
+        return m.h[t] == sum(m.y[j,t]*SIZE[j]*PW for j in not_planted_set)
+
+model.hired_employees = pyo.Constraint(years_set,rule=_hired_employees)
+
+stop= 1
+
 # # Wine Production
 
 
-# def _production_harvest_1(m, j):
-#     if j == years[-1]:
-#         return pyo.Constraint.Skip
-#     else:
-#         return m.q[j] == sum([m.x[k, j + 1] for k in age])
 
 
 # model.production_harvest_1 = pyo.Constraint(years, rule=_production_harvest_1)
