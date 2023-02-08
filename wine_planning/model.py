@@ -48,40 +48,110 @@ model.pl = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.h = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.f = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.ie = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
-model.mant = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
+model.mant = pyo.Var(terrains_set, within=pyo.Reals, bounds=(0, None))
 model.cask1 = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.cask2 = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.cask3 = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 
 
 # # Define Objective function
-model.PROFIT = sum(model.v[i,t]*PROFIT[i] for i in age_set for t in years_set)
-model.PEOPLE_COST = sum(model.f[t]*FC+model.h[t]*HC+model.ie[t]*AS for t in years_set)
-model.SEED_COST = sum(model.y[j,t]*SP*SIZE[j] for j in terrains_set for t in years_set)
+model.PROFIT = sum(model.v[i, t] * PROFIT[i] for i in age_set for t in years_set)
+model.PEOPLE_COST = sum(
+    model.f[t] * FC + model.h[t] * HC + model.ie[t] * AS for t in years_set
+)
+model.SEED_COST = sum(
+    model.y[j, t] * SP * SIZE[j] for j in terrains_set for t in years_set
+)
 
-model.obj = pyo.Objective(expr=model.PROFIT-model.PEOPLE_COST-model.SEED_COST)
+model.obj = pyo.Objective(expr=model.PROFIT - model.PEOPLE_COST - model.SEED_COST)
+
 
 # Create model constraints
-#***Available employees***
+# ***Available employees***
 def _available_employees(m, t):
     if t == years_set[0]:
-        return m.ie[t] == IW-m.f[t]+m.h[t]
+        return m.ie[t] == IW - m.f[t] + m.h[t]
     else:
-        return m.ie[t] == m.ie[t-1]+m.f[t]+m.h[t]
+        return m.ie[t] == m.ie[t - 1] + m.f[t] + m.h[t]
 
-model.available_employees = pyo.Constraint(years_set,rule=_available_employees)
 
-#***Hired Employees***
+model.available_employees = pyo.Constraint(years_set, rule=_available_employees)
+
+
+# ***Hired Employees***
 def _hired_employees(m, t):
-        return m.h[t] == sum(m.y[j,t]*SIZE[j]*PW for j in not_planted_set)
+    return m.h[t] == sum(m.y[j, t] * SIZE[j] * PW for j in not_planted_set)
 
-model.hired_employees = pyo.Constraint(years_set,rule=_hired_employees)
 
-stop= 1
+model.hired_employees = pyo.Constraint(years_set, rule=_hired_employees)
+
+
+# ***Each planted terrain has maintenance workers***
+def _planted_terrain_employees_1(m, j):
+    return m.mant[j] == sum(m.y[j, t] * MW * SIZE[j] for t in years_set)
+
+
+model.planted_terrain_employees_1 = pyo.Constraint(
+    not_planted_set, rule=_planted_terrain_employees_1
+)
+
+
+def _planted_terrain_employees_2(m, j):
+    return m.mant[j] >= 0
+
+
+model.planted_terrain_employees_2 = pyo.Constraint(
+    not_planted_set, rule=_planted_terrain_employees_2
+)
+
+
+# ***Fired Employees***
+def _fired_employees(m, t):
+    if t == years_set[0]:
+        return pyo.Constraint.Skip
+    else:
+        return m.f[t] == sum(
+            m.y[j, t - 1] * SIZE[j] * PW - m.mant[j] for j in not_planted_set
+        )
+
+
+model.fired_employees = pyo.Constraint(years_set, rule=_fired_employees)
+
+
+# Budget Constraints
+
+
+# ***Operational cost cannot exceed the budget
+def _operational_cost(m):
+    return (
+        sum(m.y[j, t] * SP * SIZE[j] for j in not_planted_set for t in years_set)
+        + sum(m.ie[t] * AS + m.h[t] * HC + m.f[t] * FC for t in years_set)
+        <= BUDGET
+    )
+
+
+model.operational_cost = pyo.Constraint(rule=_operational_cost)
+
+
+# ***Available Budget***
+def _available_budget(m, t):
+    if t == years_set[0]:
+        return m.b[t] == BUDGET - (
+            sum(m.y[j, t] * SP * SIZE[j] for j in not_planted_set for t in years_set)
+            + sum(m.ie[t] * AS + m.h[t] * HC + m.f[t] * FC for t in years_set)
+        )
+
+    else:
+        return m.b[t] == m.b[t - 1] - (
+            sum(m.y[j, t] * SP * SIZE[j] for j in not_planted_set for t in years_set)
+            + sum(m.ie[t] * AS + m.h[t] * HC + m.f[t] * FC for t in years_set)
+        )
+
+
+model.available_budget = pyo.Constraint(years_set, rule=_available_budget)
+stop = 1
 
 # # Wine Production
-
-
 
 
 # model.production_harvest_1 = pyo.Constraint(years, rule=_production_harvest_1)
