@@ -39,7 +39,7 @@ model = pyo.ConcreteModel()
 
 # Create model variables
 # Production, inventory, and budget
-model.y = pyo.Var(terrains_set, years_set, within=pyo.Binary)
+model.y = pyo.Var(not_planted_set, years_set, within=pyo.Binary)
 model.x = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.b = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.v = pyo.Var(age_set, years_set, within=pyo.Reals, bounds=(0, None))
@@ -60,10 +60,10 @@ model.PEOPLE_COST = sum(
     model.f[t] * FC + model.h[t] * HC + model.ie[t] * AS for t in years_set
 )
 model.SEED_COST = sum(
-    model.y[j, t] * SP * SIZE[j] for j in terrains_set for t in years_set
+    model.y[j, t] * SP * SIZE[j] for j in not_planted_set for t in years_set
 )
 
-model.obj = pyo.Objective(expr=model.PROFIT - model.PEOPLE_COST - model.SEED_COST)
+model.obj = pyo.Objective(expr=model.PROFIT ,sense = pyo.maximize)
 
 
 # Create model constraints
@@ -165,11 +165,11 @@ model.production = pyo.Constraint(years_set, rule=_production)
 
 
 # ***A terrain can be planted only once***
-def _terrain_planted_once(m, j):
+def _terrain_planted(m, j):
     return sum(m.y[j, t] for t in years_set) <= 1
 
 
-model.terrain_planted_once = pyo.Constraint(not_planted_set, rule=_terrain_planted_once)
+model.terrain_planted = pyo.Constraint(not_planted_set, rule=_terrain_planted)
 
 
 
@@ -189,31 +189,31 @@ model.cask_1 = pyo.Constraint(years_set, rule=_cask_1)
 
 # ***Two year cask***
 def _cask_2(m, t):
-    if t in [years_set[0],years_set[1]]:
+    if t == years_set[0]:
         return m.cask2[t] == CASK2_0
-    else:
+    elif t > years_set[1]:
         return m.cask2[t] == m.x[t-2]
+    else:
+        return pyo.Constraint.Skip
     
 
 model.cask_2 = pyo.Constraint(years_set, rule=_cask_2)
 
 # ***Three year cask***
-def _cask_3(m, t):
-    if t in [years_set[0],years_set[1],years_set[2]]:
-        return m.cask3[t] == CASK3_0
-    else:
-        return m.cask3[t] == m.x[t-3]
+# def _cask_3(m, t):
+#     # if t == years_set[0]:
+#     #     return m.cask3[t] == CASK3_0
+#     # elif t > years_set[2]:
+#     #     return m.cask3[t] == m.x[t-3]
+#     # else:
+#     #     return pyo.Constraint.Skip
     
+#     if t> years_set[2]:
+#         return m.cask3[t] == m.x[t-3]
+#     else:
+#         return pyo.Constraint.Skip
 
-model.cask_3 = pyo.Constraint(years_set, rule=_cask_3)
-
-
-# ***A terrain can be planted only once***
-def _terrain_planted(m, j):
-    return sum(m.y[j, t] for t in years_set) <= 1
-
-
-model.terrain_planted = pyo.Constraint(not_planted_set, rule=_terrain_planted)
+# model.cask_3 = pyo.Constraint(years_set, rule=_cask_3)
 
 
 # ***Relation between cask and sales***
@@ -240,26 +240,32 @@ def _bottles_limit(m, i, t):
 model.bottles_limit = pyo.Constraint(age_set,years_set, rule=_bottles_limit)
 
 
-
 # # Define optimizer
-# opt = SolverFactory("cbc")
-# results = opt.solve(model)
+opt = SolverFactory("cbc")
+results = opt.solve(model)
 
-# print(results)
+print(results)
 
-# df = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.x, names=["age", "year"]))
-# df["x"] = [pyo.value(model.x[k, j]) for k in age for j in years]
-# df = df.reset_index()
+df = pd.DataFrame(index=pd.Index([t for t in years_set]))
+df["x"] = [pyo.value(model.x[t]) for t in years_set]
+df = df.reset_index()
+print(df)
 
-# df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.y, names=["terrain", "year"]))
-# df2["y"] = [pyo.value(model.y[t, j]) for t in terrains for j in years]
+df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.y, names=["terrain", "year"]))
+df2["y"] = [pyo.value(model.y[j, t]) for j in not_planted_set for t in years_set]
 
+
+df3 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.v, names=["age", "year"]))
+df3["v"] = [pyo.value(model.v[i, t]) for i in age_set for t in years_set]
 # df2 = df2[df2["y"] == 1]
-# df2 = df2.reset_index()
+df2 = df2.reset_index()
+df3 = df3.reset_index()
+print(df2)
+print(df3)
 
-# # Create Output
-# with pd.ExcelWriter("output.xlsx") as writer:
-#     df.to_excel(writer, sheet_name="production", index=False)
-#     df2.to_excel(writer, sheet_name="planted terrains", index=False)
-# # %%
-# print(pyo.value(model.obj))
+# Create Output
+with pd.ExcelWriter("output.xlsx") as writer:
+    df.to_excel(writer, sheet_name="production", index=False)
+    df2.to_excel(writer, sheet_name="planted terrains", index=False)
+# %%
+print(pyo.value(model.obj))
