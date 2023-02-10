@@ -33,7 +33,7 @@ input_file = "data.xlsx"
     CASK2_0,
     CASK3_0,
 ) = get_optimization_data(input_file)
-
+BUDGET=10000000000000
 # Create model
 model = pyo.ConcreteModel()
 
@@ -181,7 +181,7 @@ def _cask_1(m, t):
     if t == years_set[0]:
         return m.cask1[t] == CASK1_0
     else:
-        return m.cask1[t] == m.x[t-1]
+        return m.cask1[t] == m.x[t-1] - sum(m.v[i,t] for i in age_set)
     
 
 model.cask_1 = pyo.Constraint(years_set, rule=_cask_1)
@@ -191,42 +191,31 @@ model.cask_1 = pyo.Constraint(years_set, rule=_cask_1)
 def _cask_2(m, t):
     if t == years_set[0]:
         return m.cask2[t] == CASK2_0
-    elif t > years_set[1]:
-        return m.cask2[t] == m.x[t-2]
     else:
-        return pyo.Constraint.Skip
-    
+        return m.cask2[t] == m.cask1[t-1]
 
 model.cask_2 = pyo.Constraint(years_set, rule=_cask_2)
 
 # ***Three year cask***
-# def _cask_3(m, t):
-#     # if t == years_set[0]:
-#     #     return m.cask3[t] == CASK3_0
-#     # elif t > years_set[2]:
-#     #     return m.cask3[t] == m.x[t-3]
-#     # else:
-#     #     return pyo.Constraint.Skip
-    
-#     if t> years_set[2]:
-#         return m.cask3[t] == m.x[t-3]
-#     else:
-#         return pyo.Constraint.Skip
-
-# model.cask_3 = pyo.Constraint(years_set, rule=_cask_3)
+def _cask_3(m, t):    
+    if t == years_set[0]:
+        return m.cask3[t] == CASK3_0
+    else:
+        return m.cask3[t] == m.cask2[t-1] - sum(m.v[i,t] for i in age_set)
+model.cask_3 = pyo.Constraint(years_set, rule=_cask_3)
 
 
 # ***Relation between cask and sales***
-def _cask_sales(m, i):
+def _cask_sales(m, i,t):
     if i == age_set[0]:
-        return sum(m.v[i, t] for t in years_set) <= sum(m.cask1[t] for t in years_set)
+        return m.v[i, t] <= m.cask1[t] 
     elif i == age_set[1]:
-        return sum(m.v[i, t] for t in years_set) == sum(m.cask3[t] for t in years_set)
+        return m.v[i, t] == m.cask3[t]
     else:
         pyo.Constraint.Skip
 
 
-model.cask_sales = pyo.Constraint(age_set, rule=_cask_sales)
+model.cask_sales = pyo.Constraint(age_set,years_set, rule=_cask_sales)
 
 
 # Sales and bottle production
@@ -245,27 +234,49 @@ opt = SolverFactory("cbc")
 results = opt.solve(model)
 
 print(results)
+try:
+    df = pd.DataFrame(index=pd.Index([t for t in years_set]))
+    df["x"] = [pyo.value(model.x[t]) for t in years_set]
+    
+    df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.y, names=["terrain", "year"]))
+    df2["y"] = [pyo.value(model.y[j, t]) for j in not_planted_set for t in years_set]
+  
+    df3 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.v, names=["age", "year"]))
+    df3["v"] = [pyo.value(model.v[i, t]) for i in age_set for t in years_set]
+    
 
-df = pd.DataFrame(index=pd.Index([t for t in years_set]))
-df["x"] = [pyo.value(model.x[t]) for t in years_set]
-df = df.reset_index()
-print(df)
-
-df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.y, names=["terrain", "year"]))
-df2["y"] = [pyo.value(model.y[j, t]) for j in not_planted_set for t in years_set]
-
-
-df3 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.v, names=["age", "year"]))
-df3["v"] = [pyo.value(model.v[i, t]) for i in age_set for t in years_set]
-# df2 = df2[df2["y"] == 1]
-df2 = df2.reset_index()
-df3 = df3.reset_index()
-print(df2)
-print(df3)
-
-# Create Output
-with pd.ExcelWriter("output.xlsx") as writer:
-    df.to_excel(writer, sheet_name="production", index=False)
-    df2.to_excel(writer, sheet_name="planted terrains", index=False)
-# %%
-print(pyo.value(model.obj))
+    df4 = pd.DataFrame(index=pd.Index([j for j in not_planted_set]))
+    df4["mant"] = [pyo.value(model.mant[j]) for j in not_planted_set]
+    
+    df5 = pd.DataFrame(index=pd.Index([t for t in years_set]))
+    df5["h"] = [pyo.value(model.h[t]) for t in years_set]
+    
+    df6 = pd.DataFrame(index=pd.Index([t for t in years_set]))
+    df6["f"] = [pyo.value(model.f[t]) for t in years_set]
+    
+    df7 = pd.DataFrame(index=pd.Index([t for t in years_set]))
+    df7["ie"] = [pyo.value(model.ie[t]) for t in years_set]
+    
+    df = df.reset_index()
+    df2 = df2.reset_index()
+    df3 = df3.reset_index()
+    df4 = df4.reset_index()
+    df5 = df5.reset_index()
+    df6 = df6.reset_index()
+    df7 = df7.reset_index()
+    
+    print(df)
+    
+    # Create Output
+    with pd.ExcelWriter("output.xlsx") as writer:
+        df.to_excel(writer, sheet_name="production", index=False)
+        df2.to_excel(writer, sheet_name="planted terrains", index=False)
+        df3.to_excel(writer, sheet_name="sales", index=False)
+        df4.to_excel(writer, sheet_name="mant_workers", index=False)
+        df5.to_excel(writer, sheet_name="hired_workers", index=False)
+        df6.to_excel(writer, sheet_name="fired_workers", index=False)
+        df7.to_excel(writer, sheet_name="avail_workers", index=False)
+    # %%
+    print(pyo.value(model.obj))
+except ValueError:
+    print('model infeseable')
