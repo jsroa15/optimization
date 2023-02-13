@@ -33,13 +33,13 @@ input_file = "data.xlsx"
     CASK2_0,
     CASK3_0,
 ) = get_optimization_data(input_file)
-BUDGET=10000000000000
+# BUDGET=10000000000000
 # Create model
 model = pyo.ConcreteModel()
 
 # Create model variables
 # Production, inventory, and budget
-model.y = pyo.Var(not_planted_set, years_set, within=pyo.Binary)
+model.y = pyo.Var(terrains_set, years_set, within=pyo.Binary)
 model.x = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.b = pyo.Var(years_set, within=pyo.Reals, bounds=(0, None))
 model.v = pyo.Var(age_set, years_set, within=pyo.Reals, bounds=(0, None))
@@ -72,7 +72,7 @@ def _available_employees(m, t):
     if t == years_set[0]:
         return m.ie[t] == IW - m.f[t] + m.h[t]
     else:
-        return m.ie[t] == m.ie[t - 1] + m.f[t] + m.h[t]
+        return m.ie[t] ==m.ie[t - 1] - m.f[t] + m.h[t]
 
 
 model.available_employees = pyo.Constraint(years_set, rule=_available_employees)
@@ -88,11 +88,11 @@ model.hired_employees = pyo.Constraint(years_set, rule=_hired_employees)
 
 # ***Each planted terrain has maintenance workers***
 def _planted_terrain_employees_1(m, j):
-    return m.mant[j] == sum(m.y[j, t] * MW * SIZE[j] for t in years_set)
+    return m.mant[j] == MW * SIZE[j]*IP[j]+sum(m.y[j, t] * MW * SIZE[j] for t in years_set)
 
 
 model.planted_terrain_employees_1 = pyo.Constraint(
-    not_planted_set, rule=_planted_terrain_employees_1
+    terrains_set, rule=_planted_terrain_employees_1
 )
 
 
@@ -103,19 +103,6 @@ def _planted_terrain_employees_2(m, j):
 model.planted_terrain_employees_2 = pyo.Constraint(
     not_planted_set, rule=_planted_terrain_employees_2
 )
-
-
-# ***Fired Employees***
-def _fired_employees(m, t):
-    if t == years_set[0]:
-        return pyo.Constraint.Skip
-    else:
-        return m.f[t] == sum(
-            m.y[j, t - 1] * SIZE[j] * PW - m.mant[j] for j in not_planted_set
-        )
-
-
-model.fired_employees = pyo.Constraint(years_set, rule=_fired_employees)
 
 
 # Budget Constraints
@@ -239,14 +226,14 @@ try:
     df["x"] = [pyo.value(model.x[t]) for t in years_set]
     
     df2 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.y, names=["terrain", "year"]))
-    df2["y"] = [pyo.value(model.y[j, t]) for j in not_planted_set for t in years_set]
+    df2["y"] = [pyo.value(model.y[j, t]) for j in terrains_set for t in years_set]
   
     df3 = pd.DataFrame(index=pd.MultiIndex.from_tuples(model.v, names=["age", "year"]))
     df3["v"] = [pyo.value(model.v[i, t]) for i in age_set for t in years_set]
     
 
-    df4 = pd.DataFrame(index=pd.Index([j for j in not_planted_set]))
-    df4["mant"] = [pyo.value(model.mant[j]) for j in not_planted_set]
+    df4 = pd.DataFrame(index=pd.Index([j for j in terrains_set]))
+    df4["mant"] = [pyo.value(model.mant[j]) for j in terrains_set]
     
     df5 = pd.DataFrame(index=pd.Index([t for t in years_set]))
     df5["h"] = [pyo.value(model.h[t]) for t in years_set]
@@ -265,7 +252,11 @@ try:
     df6 = df6.reset_index()
     df7 = df7.reset_index()
     
-    print(df)
+    dfs = [df,df2,df3,df4,df5, df6,df7]
+    
+    for df in dfs:
+        print(df)
+        print("++++++++++++++++++++++++++++++++")
     
     # Create Output
     with pd.ExcelWriter("output.xlsx") as writer:
